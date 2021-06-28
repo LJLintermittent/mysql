@@ -150,7 +150,35 @@ checkpoint技术出现的场景:
 
 重做日志出现不可用的情况是因为当前事务数据库系统对重做日志的设计都是循环使用的，并不是让其无限增大的，这从成本和管理上来说都是比较困难的。重做日志可以被重用的部分是指当前部分不再被需要，即当数据库发生宕机时，数据的恢复我也不需要你这段重做日志，因此这部分可以被覆盖使用。若此时重做日志还需要被使用，那么强制进行checkpoint，将缓冲池中的页至少刷新到当前重做日志的位置。
 
+### 两种checkpoint技术
 
+对于InnoDB存储引擎而言，其是通过LSN来标记版本的，而LSN是8字节的数字，单位是字节，每个页有LSN，重做日志中有LSN，checkpoint也有LSN。
+
+在InnoDB存储引擎中，checkpoint发生的时间，条件和脏页的选择等都非常的复杂。而checkpoint所做的事情无外乎是将缓冲池中的脏页（新版本的页）刷回磁盘。
+
+在InnoDB存储引擎中，有两种checkpoint，分别为：
+
+1.sharp checkpoint
+
+2.fuzzy checkpoint
+
+sharp checkpoint发生在数据库关闭时将所有的脏页刷新回到磁盘中，这是默认的工作方式
+
+但是若在数据库运行的时候也是用sharp checkpoint，那么对数据库的可用性会受到巨大的影响，我个人认为这里的影响比较类似于JVM中垃圾回收导致的STW（stop the world），为了解决这个问题，在innoDB存储引擎内部，使用fuzzy checkpoint进行页的刷新，即只刷新部分脏页，而不是刷新所以的脏页。
+
+在inndoDB存储引擎中存在一下几种情况的fuzzy checkpoint
+
+1.master thread checkpoint
+
+每秒或者每十秒的速度从缓冲池的脏页列表中刷新一定比例的页回磁盘，这个过程是异步进行的，用户查询不会受到阻塞。
+
+2.flush_lru_list checkpoint 
+
+innoDB存储引擎需要保证LRU列表中需要有差不多100个空闲页可供使用。
+
+3.async/sync flush checkpoint 指的是重做日志文件不可用的情况，这时候需要强制将一些页刷新回磁盘。
+
+本文总结自《MySQL技术内幕：InnoDB存储引擎》p1 -- p36
 
 
 
