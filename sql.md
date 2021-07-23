@@ -79,3 +79,17 @@ insert into Score values('07' , '03' , 98);
 
 ~~~
 
+### SQL练习
+
+* day1
+
+~~~sql
+查询"01"课程比"02"课程成绩高的学生的信息及课程分数
+
+select stu.* ,s1.s_score as 01_score,s2.s_score as 02_score 
+from student stu 
+join score s1 on stu.s_id=s1.s_id and s1.c_id='01'
+left join score s2 on stu.s_id=s2.s_id and s2.c_id='02' 
+or s2.c_id = NULL 
+where s1.s_score>s2.s_score
+~~~
