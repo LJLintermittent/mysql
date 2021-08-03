@@ -81,7 +81,7 @@ insert into Score values('07' , '03' , 98);
 
 ### SQL练习
 
-* day1
+## 第一题
 
 ~~~sql
 查询"01"课程比"02"课程成绩高的学生的信息及课程分数
@@ -163,5 +163,46 @@ No tables used：Query语句中使用from dual 或不含任何from子句
 
 *****注意:
 EXPALIN只能解释SELECT操作，其他操作要重写为SELECT后查看执行计划。
+~~~
+
+## 第二题
+
+~~~sql
+查询"01"课程比"02"课程成绩低的学生的信息及课程分数
+
+SELECT s.*,sc1.s_score as 01_score,sc2.s_score as 02_score from 
+student s left join score sc1 on s.s_id = sc1.s_id and sc1.c_id = '01' or sc1.c_id = null
+join score sc2 on s.s_id = sc2.s_id and sc2.c_id = '02' WHERE sc1.s_score < sc2.s_scores
+~~~
+
+![image](https://cdn.jsdelivr.net/gh/chen-xing/figure_bed_02/cdn/20210803012505169.png)
+
+~~~wiki
+对表score的s_score字段加了索引
+create index idx_s_score on score (s_score);
+~~~
+
+![image](https://cdn.jsdelivr.net/gh/chen-xing/figure_bed_02/cdn/20210803013027295.png)
+
+## 第三题
+
+~~~sql
+查询平均成绩大于等于60分的同学的学生编号和学生姓名和平均成绩
+
+SELECT stu.s_id,stu.s_name,ROUND(AVG(sc.s_score),2) as avg_score from 
+student stu 
+join score sc on stu.s_id = sc.s_id
+GROUP BY stu.s_id,stu.s_name HAVING ROUND(AVG(sc.s_score),2) >= 60 ORDER BY avg_score DESC;
+~~~
+
+![image](https://cdn.jsdelivr.net/gh/chen-xing/figure_bed_02/cdn/20210803195137121.png)
+
+~~~wiki
+ROUND(x) 求x的四舍五入的结果
+ROUND(x,y) 求x的四舍五入结果，结果精度保留y位小数
+本题的HAVING不能用WHERE来代替，因为：
+1、where 后不能跟聚合函数，因为where执行顺序大于聚合函数。
+2、where 子句的作用是在对查询结果进行分组前，将不符合where条件的行去掉，即在分组之前过滤数据，条件中不能包含聚组函数，使用where条件显示特定的行。
+3、having 子句的作用是筛选满足条件的组，即在分组之后过滤数据，条件中经常包含聚组函数，使用having 条件显示特定的组，也可以使用多个分组标准进行分组。
 ~~~
 
