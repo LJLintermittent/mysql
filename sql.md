@@ -206,3 +206,21 @@ ROUND(x,y) 求x的四舍五入结果，结果精度保留y位小数
 3、having 子句的作用是筛选满足条件的组，即在分组之后过滤数据，条件中经常包含聚组函数，使用having 条件显示特定的组，也可以使用多个分组标准进行分组。
 ~~~
 
+## 第四题
+
+~~~sql
+查询平均成绩小于60分的同学的学生编号和学生姓名和平均成绩
+
+SELECT stu.s_id,stu.s_name,ROUND(AVG(sc.s_score),2) as avg_score from student stu
+left JOIN score sc on stu.s_id = sc.s_id GROUP BY stu.s_id,stu.s_name HAVING ROUND(AVG(sc.s_score),2) < 60
+UNION 
+SELECT stu.s_id,stu.s_name,0 as avg_score from student stu 
+WHERE stu.s_id not in (SELECT DISTINCT s_id as 学生表里有的学生编号 FROM score)
+~~~
+
+![image](https://cdn.jsdelivr.net/gh/chen-xing/figure_bed_02/cdn/20210804194005329.png)
+
+~~~wiki
+SELECT DISTINCT ：查找不重复的值
+~~~
+
