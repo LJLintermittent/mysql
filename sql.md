@@ -224,3 +224,34 @@ WHERE stu.s_id not in (SELECT DISTINCT s_id as 学生表里有的学生编号 FR
 SELECT DISTINCT ：查找不重复的值
 ~~~
 
+## 第五题
+
+~~~sql
+查询所有同学的学生编号、学生姓名、选课总数、所有课程的总成绩
+
+SELECT stu.s_id,stu.s_name,count(sc.c_id) as sum_course,sum(sc.s_score) as all_score_sum from student stu
+left JOIN score sc on stu.s_id = sc.s_id GROUP BY stu.s_id,stu.s_name;
+
+给student表name字段建立索引
+create index idx_s_name on student(s_name);
+删除索引
+drop index idx_s_name on student;
+~~~
+
+1.无索引测试
+
+![image](https://cdn.jsdelivr.net/gh/chen-xing/figure_bed_02/cdn/20210805170428039.png)
+
+2.有索引测试
+
+![image](https://cdn.jsdelivr.net/gh/chen-xing/figure_bed_02/cdn/20210805170540348.png)
+
+~~~wiki
+ show profile for query 2;  
+ 获取指定sql语句的执行开销
+~~~
+
+
+
+
+
