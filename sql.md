@@ -251,7 +251,28 @@ drop index idx_s_name on student;
  获取指定sql语句的执行开销
 ~~~
 
+## 第六题
 
+~~~sql
+查询"李"姓老师的数量
 
+explain select COUNT(t_id) as 姓李的老师的数量 from teacher WHERE t_name LIKE '李%';
+~~~
 
+~~~wiki
+当SQL语句改为如下写法时：
+
+SELECT COUNT(t_id) as 姓李的老师的数量 from teacher where t_name  like '%李%';
+或者
+SELECT COUNT(t_id) as 姓李的老师的数量 from teacher where t_name  like '%李';
+
+如果t_name字段加了索引，explain后发现依然使用了索引
+
+“用索引” 和 “用索引快速定位记录”是有区别的。“用索引”有一种用法是 “顺序扫描索引”。
+Like ‘y’ 或 ‘y%’ 可以使用索引，并且快速定位记录。like ‘%y’ 或 ‘%y%’，只是在二级索引树上遍历查找记录，并不能快速定位（扫描了整棵索引树）
+
+index 类型表示”和全表扫描一样。只是扫描表的时候按照索引次序进行而不是行。主要优点就是避免了排序, 但是开销仍然非常大
+~~~
+
+![image](https://cdn.jsdelivr.net/gh/chen-xing/figure_bed_02/cdn/20210806163334582.png)
 
