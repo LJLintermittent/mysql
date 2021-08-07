@@ -276,3 +276,25 @@ index 类型表示”和全表扫描一样。只是扫描表的时候按照索�
 
 ![image](https://cdn.jsdelivr.net/gh/chen-xing/figure_bed_02/cdn/20210806163334582.png)
 
+## 第七题
+
+~~~sql
+查询学过"张三"老师授课的同学的信息
+
+SELECT stu.* from student stu
+JOIN score sc on stu.s_id = sc.s_id WHERE sc.c_id in (
+	SELECT c_id from course where t_id = (
+		SELECT t_id from teacher WHERE t_name = '张三'
+	)
+) ORDER BY stu.s_id ASC
+
+create  INDEX idx_course_t_id on course(t_id)
+建立完索引后，将ALL优化到了ref
+~~~
+
+![image](https://cdn.jsdelivr.net/gh/chen-xing/figure_bed_02/cdn/20210807153333154.png)
+
+![image](https://cdn.jsdelivr.net/gh/chen-xing/figure_bed_02/cdn/20210807153352096.png)
+
+
+
