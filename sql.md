@@ -296,5 +296,20 @@ create  INDEX idx_course_t_id on course(t_id)
 
 ![image](https://cdn.jsdelivr.net/gh/chen-xing/figure_bed_02/cdn/20210807153352096.png)
 
+## 第八题
 
+~~~sql
+查询没学过"张三"老师授课的同学的信息
+
+SELECT stu.* from student stu 
+WHERE stu.s_id not in (
+	SELECT stu2.s_id FROM student stu2 join score sc2 on stu2.s_id = sc2.s_id WHERE sc2.c_id in (
+		SELECT c_id  from course WHERE t_id = (
+			SELECT t_id from teacher WHERE t_name = '张三'
+		)
+	)
+)
+~~~
+
+![image](https://cdn.jsdelivr.net/gh/chen-xing/figure_bed_02/cdn/20210808121025348.png)
 
