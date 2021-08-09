@@ -313,3 +313,12 @@ WHERE stu.s_id not in (
 
 ![image](https://cdn.jsdelivr.net/gh/chen-xing/figure_bed_02/cdn/20210808121025348.png)
 
+## 第九题
+
+~~~sql
+9.查询学过编号为"01"并且也学过编号为"02"的课程的同学的信息
+
+SELECT stu.* FROM student stu,score sc1,score sc2
+where stu.s_id = sc1.s_id and stu.s_id = sc2.s_id and sc1.c_id = '01' and sc2.c_id = '02'
+~~~
+
