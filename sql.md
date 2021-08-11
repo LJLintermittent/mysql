@@ -81,7 +81,7 @@ insert into Score values('07' , '03' , 98);
 
 ### SQL练习
 
-## 第一题
+1.
 
 ~~~sql
 查询"01"课程比"02"课程成绩高的学生的信息及课程分数
@@ -165,7 +165,7 @@ No tables used：Query语句中使用from dual 或不含任何from子句
 EXPALIN只能解释SELECT操作，其他操作要重写为SELECT后查看执行计划。
 ~~~
 
-## 第二题
+2.
 
 ~~~sql
 查询"01"课程比"02"课程成绩低的学生的信息及课程分数
@@ -184,7 +184,7 @@ create index idx_s_score on score (s_score);
 
 ![image](https://cdn.jsdelivr.net/gh/chen-xing/figure_bed_02/cdn/20210803013027295.png)
 
-## 第三题
+3.
 
 ~~~sql
 查询平均成绩大于等于60分的同学的学生编号和学生姓名和平均成绩
@@ -206,7 +206,7 @@ ROUND(x,y) 求x的四舍五入结果，结果精度保留y位小数
 3、having 子句的作用是筛选满足条件的组，即在分组之后过滤数据，条件中经常包含聚组函数，使用having 条件显示特定的组，也可以使用多个分组标准进行分组。
 ~~~
 
-## 第四题
+4.
 
 ~~~sql
 查询平均成绩小于60分的同学的学生编号和学生姓名和平均成绩
@@ -224,7 +224,7 @@ WHERE stu.s_id not in (SELECT DISTINCT s_id as 学生表里有的学生编号 FR
 SELECT DISTINCT ：查找不重复的值
 ~~~
 
-## 第五题
+5.
 
 ~~~sql
 查询所有同学的学生编号、学生姓名、选课总数、所有课程的总成绩
@@ -251,7 +251,7 @@ drop index idx_s_name on student;
  获取指定sql语句的执行开销
 ~~~
 
-## 第六题
+6.
 
 ~~~sql
 查询"李"姓老师的数量
@@ -276,7 +276,7 @@ index 类型表示”和全表扫描一样。只是扫描表的时候按照索�
 
 ![image](https://cdn.jsdelivr.net/gh/chen-xing/figure_bed_02/cdn/20210806163334582.png)
 
-## 第七题
+7.
 
 ~~~sql
 查询学过"张三"老师授课的同学的信息
@@ -296,7 +296,7 @@ create  INDEX idx_course_t_id on course(t_id)
 
 ![image](https://cdn.jsdelivr.net/gh/chen-xing/figure_bed_02/cdn/20210807153352096.png)
 
-## 第八题
+8.
 
 ~~~sql
 查询没学过"张三"老师授课的同学的信息
@@ -313,7 +313,7 @@ WHERE stu.s_id not in (
 
 ![image](https://cdn.jsdelivr.net/gh/chen-xing/figure_bed_02/cdn/20210808121025348.png)
 
-## 第九题
+9.
 
 ~~~sql
 9.查询学过编号为"01"并且也学过编号为"02"的课程的同学的信息
@@ -322,7 +322,7 @@ SELECT stu.* FROM student stu,score sc1,score sc2
 where stu.s_id = sc1.s_id and stu.s_id = sc2.s_id and sc1.c_id = '01' and sc2.c_id = '02'
 ~~~
 
-## 第十题
+10.
 
 ~~~sql
 10. 查询学过编号为"01"但是没有学过编号为"02"的课程的同学的信息
@@ -331,4 +331,21 @@ SELECT stu.* from student stu
 WHERE stu.s_id in (SELECT s_id from score WHERE c_id = '01')
 and stu.s_id not in (SELECT s_id from score WHERE c_id = '02')
 ~~~
+
+11.
+
+~~~sql
+11. 查询没有学全所有课程的同学的信息
+
+SELECT stu.* from student stu where s_id in (
+	SELECT s_id from score WHERE s_id not in (
+		SELECT a.s_id FROM score a 
+		JOIN	score b on a.s_id = b.s_id and b.c_id = '02'
+	  JOIN score c on a.s_id = c.s_id and c.c_id = '03'
+	  WHERE a.c_id = '01'
+	)
+)
+~~~
+
+
 
