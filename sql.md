@@ -347,5 +347,15 @@ SELECT stu.* from student stu where s_id in (
 )
 ~~~
 
+12.
 
+~~~sql
+查询至少有一门课与学号为"01"的同学所学相同的同学的信息
+
+	SELECT stu.* from student stu WHERE s_id in(
+		SELECT DISTINCT sc.s_id from score sc WHERE sc.c_id in(
+			SELECT c_id from score  WHERE s_id = '01'
+	)
+)
+~~~
 
