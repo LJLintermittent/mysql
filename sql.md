@@ -387,3 +387,36 @@ SELECT stu.s_name from student stu WHERE stu.s_id not in (
 )
 ~~~
 
+15.
+
+~~~sql
+查询两门及其以上不及格课程的同学的学号，姓名及其平均成绩 HAVING COUNT(1) >=2
+
+SELECT stu.s_id,stu.s_name ,ROUND(AVG(sc.s_score)) as 平均成绩 FROM  student stu
+LEFT JOIN score sc on stu.s_id = sc.s_id 
+WHERE stu.s_id in(	
+	SELECT s_id from score WHERE s_score < 60 GROUP BY s_id HAVING COUNT(1) >=2
+)
+GROUP BY stu.s_id,stu.s_name;
+~~~
+
+16.
+
+~~~sql
+检索"01"课程分数小于60，按分数降序排列的学生信息
+
+SELECT stu.*,sc.c_id as 课程id,sc.s_score as 课程成绩  from student stu 
+left JOIN score sc on stu.s_id = sc.s_id 
+WHERE stu.s_id in(
+	SELECT s_id from score WHERE s_score < 60 and c_id = '01'
+)
+GROUP BY stu.s_id,stu.s_name
+ORDER BY sc.s_score  DESC
+
+
+select a.*,b.c_id,b.s_score from 
+    student a,score b 
+    where a.s_id = b.s_id and b.c_id='01' and b.s_score<60 ORDER BY b.s_score DESC;
+
+~~~
+
