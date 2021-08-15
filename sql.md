@@ -390,7 +390,7 @@ SELECT stu.s_name from student stu WHERE stu.s_id not in (
 15.
 
 ~~~sql
-查询两门及其以上不及格课程的同学的学号，姓名及其平均成绩 HAVING COUNT(1) >=2
+查询两门及其以上不及格课程的同学的学号，姓名及其平均成绩
 
 SELECT stu.s_id,stu.s_name ,ROUND(AVG(sc.s_score)) as 平均成绩 FROM  student stu
 LEFT JOIN score sc on stu.s_id = sc.s_id 
@@ -418,5 +418,33 @@ select a.*,b.c_id,b.s_score from
     student a,score b 
     where a.s_id = b.s_id and b.c_id='01' and b.s_score<60 ORDER BY b.s_score DESC;
 
+~~~
+
+17.
+
+~~~sql
+按平均成绩从高到低显示所有学生的所有课程的成绩以及平均成绩
+SELECT   a.s_id as 学号,
+		(SELECT s_name from student WHERE s_id = a.s_id) as 姓名,
+		(SELECT s_score from score WHERE s_id = a.s_id and c_id = '01') as 语文,
+		(SELECT s_score FROM score WHERE s_id = a.s_id and c_id = '02') as 数学,
+		(SELECT s_score FROM score WHERE s_id = a.s_id and c_id = '03') as 英语,
+		ROUND(AVG(s_score),2) as 平均分
+FROM score a GROUP BY s_id ORDER BY 平均分 DESC
+
+~~~
+
+18.
+
+~~~sql
+查询各科成绩最高分、最低分和平均分：以如下形式显示：课程ID，课程name，最高分，最低分，平均分，及格率，中等率，优良率，优秀率
+及格为>=60，中等为：70-80，优良为：80-90，优秀为：>=90
+
+select a.c_id,b.c_name,MAX(s_score),MIN(s_score),ROUND(AVG(s_score),2),
+    ROUND(100*(SUM(case when a.s_score>=60 then 1 else 0 end)/SUM(case when a.s_score then 1 else 0 end)),2) as 及格率,
+    ROUND(100*(SUM(case when a.s_score>=70 and a.s_score<=80 then 1 else 0 end)/SUM(case when a.s_score then 1 else 0 end)),2) as 中等率,
+    ROUND(100*(SUM(case when a.s_score>=80 and a.s_score<=90 then 1 else 0 end)/SUM(case when a.s_score then 1 else 0 end)),2) as 优良率,
+    ROUND(100*(SUM(case when a.s_score>=90 then 1 else 0 end)/SUM(case when a.s_score then 1 else 0 end)),2) as 优秀率
+    from score a left join course b on a.c_id = b.c_id GROUP BY a.c_id,b.c_name
 ~~~
 
