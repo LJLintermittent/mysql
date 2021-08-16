@@ -448,3 +448,20 @@ select a.c_id,b.c_name,MAX(s_score),MIN(s_score),ROUND(AVG(s_score),2),
     from score a left join course b on a.c_id = b.c_id GROUP BY a.c_id,b.c_name
 ~~~
 
+21.
+
+~~~sql
+查询不同老师所教不同课程平均分从高到低显示
+
+SELECT t.t_id,t.t_name,c.c_id,ROUND(AVG(s_score),2) as 平均分 FROM course c
+LEFT JOIN score sc on c.c_id = sc.c_id
+LEFT JOIN teacher t on c.t_id = t.t_id
+GROUP BY c.c_id,c.t_id,t.t_name ORDER BY 平均分 DESC
+~~~
+
+
+
+
+
+
+
