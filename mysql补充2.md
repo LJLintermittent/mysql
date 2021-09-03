@@ -352,3 +352,26 @@ wal机制主要得益于两个方面：
 
 3.将innodb_flush_log_at_trx_commit设置为2，风险是，主动宕机可能会丢数据
 
+### binlog的格式
+
+binlog_format=statement时，日志中记录的是sql语句的原文，并且在sql语句之前还有一个use 库名的操作，我猜测它的目的是binlog的主要作用是归档和主备复制，那么在主备复制的时候，不管是什么线程都应该能正确的找到那个库的那张表
+
+除此以外呢，如果开启事务的话前面还会有begin，结尾会有commit，并且commit后面会跟一个xid等于xxx的信息，说到commit，想到mysql在宕机恢复的时候，如果有这样一种场景，首先由于二阶提交，redo会被先写到prepare状态，然后写binlog，然后在redo commit状态，如果这时候redo 已经是prepare状态，正在写binlog，宕机了，那么重启后它的恢复逻辑是判断binlog完不完整，而这个判断完整的依据就是binlog的这个commit字段，一个完整的事务写的binlog在结尾一定有commit字段
+
+binlog_format=row时，前后的begin和commit是一样的，但是row格式的binlog里没有了sql语句原文，转而用event，也就是事件来代替，
+
+首先有一个table_map_event,用来说明接下来操作的表是哪个库的哪个表
+
+然后是相应的更新逻辑。比如删除就是delete_row_event,其实真正更多的详细信息需要通过mysqlbinlog工具来查看。
+
+为什么会有mixed这种方案：
+
+因为有些statement格式的binlog可能会导致主备不一致，所以这种特殊情况就需要使用row
+
+而使用row的话缺点是很占用空间，比如一个delete语句删除十万行数据，用statement就是表示就是一个sql语句的事情，但是row的话会把十万条记录都写到binlog中，造成很大的空间占用，那么写binlog就会很耗费io资源，影响执行的速度。
+
+所以mysql就取了个折中的方案，mixed，mysql会自己判断这条sql语句是否可能引起主备不一致的情况，如果有可能，就用row，否则用statement
+
+当然现在线上场景更多的使用row，主要好处是数据恢复
+
+即使执行的是delete语句，row格式的binlog也会把被删除掉的行的整行信息保存起来，所以如果在执行完一条语句后发现删错了，直接把delete改为insert这行数据就ok了，如果是insert，会记录所有的字段信息，这些信息可以精准定位刚刚被插入的那一行，然后insert转delete，如果是update，binlog会记录修改前整行的记录和修改后整行的记录，所以如果错误执行了update，只需要把这两个event对调一下再去执行就ok了
