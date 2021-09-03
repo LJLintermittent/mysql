@@ -286,3 +286,69 @@ mysql建立连接的过程，成本是很高的，除了正常的网络连接三
 
 3.观察慢查询日志里每类语句的输出，特别留意Rows_examined字段是否与预期一致。
 
+### mysql是怎么保证数据不丢失的
+
+只要redo和binlog保证持久化到磁盘，就能确保mysql异常重启后，数据可以恢复
+
+binlog的写入时机：
+
+事务执行的过程中，先把日志写到binlog cache中，事务提交的时候，再把binlog cache写到binlog文件中
+
+一个事务的binlog是不能拆开的，因此不论这个事务多大，也要确保一次性写入，这就涉及binlog caceh的保存问题，系统为binlog cache分配了一片内存，每个线程都有自己独立的binlog cache，binlog_cache_size可以决定这个内存的大小，如果超过了这个大小，就要暂存到磁盘中，事务提交的时候，执行器会把binlog cache里的完整事务写入到binlog磁盘文件中，并清空binlog_size
+
+可以得到一个结论，每个线程都有一个自己的binlog cache，但是他们对应磁盘中的同一个binlog文件。fsync才是将数据持久化到磁盘的操作，一般情况下我认为fsync才会占用磁盘的IOPS。sync_binlog = N (N > 1)的时候，表示每次提交事务都write，write指的是把日志写入到page_cache,并没有持久化到磁盘，fsync才是持久化到磁盘，sync_binlog = N (N > 1)表示每次提交事务都会write，但是累计N个事务才会fsync，因此，在IO出现瓶颈的时候，将这个N设置为一个比较大的值，可以提升性能，但是如果设置为N，对应的风险是，如果主机发生异常重启，会丢失最近N个事务的binlog日志
+
+redo的写入机制：
+
+事务执行的过程中生成的redo要先写进redobuffer中，但是redobuffer中的内容也不并不是直接持久化到磁盘的
+
+如果事务执行期间mysql发生异常重启，那这部分日志就丢失了，由于事务日志并没有提交，所以这时日志丢了也不会有损失，因为会直接回滚，本来也不需要这部分日志。但是在事务提交前，redobuffer中的部分日志有没有可能被持久化到磁盘，答案是确实会有这种情况
+
+redo的三种存在状态：
+
+1.存在redobuffer中，物理上是在mysql进程内存中
+
+2.写到磁盘，但是没有持久化，物理上是在文件系统的page caceh里
+
+3.持久化到磁盘，对应的是hard disk
+
+innodb有一个后台线程，每隔一秒会把redobuffer中的日志，调用write写到文件系统的page cache中，然后调用fsync持久化到磁盘
+
+注意:事务执行期间redolog也是直接写在redobuffer中，然后redobuffer中的redo也会被后台线程一起持久化到磁盘，也就是说一个还没有提交事务的redo，也有可能已经持久化到磁盘了
+
+除了后台线程每秒一次的刷盘外，还有两种情况会让一个没有提交事务的redo写入到磁盘中
+
+1.redobuffer占用的空间即将达到innodblogbuffersize大小的一半，后台线程会主动写盘，注意由于这个事务并没有提交，所以这个写盘操作只是write，而没有调用fsync，也就是只留在了文件系统的page cache
+
+2.并行事务提交的时候，顺带将这个事务的redobuffer持久化到磁盘中。
+
+通常我们说的mysql双1配置，指的就是sync_binlog和innodb_flush_log_at_trx_commit都设置成 1。也就是说一个事务完整提交前，需要等待两次刷盘，一次是redo的prepare阶段，一次是binlog
+
+两次刷盘意味着假如从mysql看到tps每秒事务处理数是每秒两万的话，那么两次刷盘，相当于每秒要写四万次磁盘，而如果用工具测试磁盘能力，发现磁盘自己都不能应对这么大的iops，那么mysql是怎么做到这个两万的tps的？
+
+这就是组提交机制 （group commit）
+
+概念：日志逻辑序列号（LSN）lsn是递增的，用来对应redo 的一个个写入点，每次写入长度为length的redolog，lsn的值就会加上length
+
+三个并发事务在redobuffe的prepare阶段，都已经写完，准备持久化，对应着三个不同的LSN，当有第一个事务到达时，会被选为这组的leader，然后leader开始写盘，这个组里有三个事务，LSN变为这个组里最大的一个LSN，他去写盘的时候会带上这个lsn，因此当leader返回的时候所有lsn小于这个值的事务都已经持久化完毕，所以这时候剩下两个事务可以直接返回，所以一个组里，成员越多，节约磁盘iops的效果越好，但是如果是单线程，那就一个事务对应一次持久化操作
+
+为了让一次fsync带的组员更多，mysql有一个很有趣的优化：拖时间
+
+写入redo，处于prepare阶段-》写binlog-》提交事务，处于commit状态，其实这里面binlog的写入是分为两步操作的，先把binlog从binlog cache写到磁盘的binlog page cache，然后调用fsync持久化
+
+wal机制是减少磁盘写，可是每次事务提交都会写redo和binlog，这磁盘写次数真的变少了吗？
+
+wal机制主要得益于两个方面：
+
+1.redo和binlog都是顺序写的，磁盘的顺序写比随机写速度快
+
+2.组提交机制，可以大幅降低磁盘的iops消耗
+
+### 综上，如果mysql出现性能瓶颈，而且瓶颈是io，那么优化方案如下：
+
+1.设置 binlog_group_commit_sync_delay 和 binlog_group_commit_sync_no_delay_count参数，减少binlog的写盘次数，这个方式就是基于额外的故意等待，因此可能会增加语句的响应时间，但是没有丢数据的风险
+
+2.将sync_binlog的值设置为（100-1000），风险是宕机会丢binlog日志
+
+3.将innodb_flush_log_at_trx_commit设置为2，风险是，主动宕机可能会丢数据
+
