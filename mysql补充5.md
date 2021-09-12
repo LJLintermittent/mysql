@@ -59,3 +59,19 @@ innodb中的 io thread在每次事务提交的时候都会将log buffer中的数
 **innodb_flush_log_at_trx_commit = 2**
 
 这个是每次事务提交的时候都会将数据写入到操作系统的文件系统的缓存中，但是这个还是相当于在内存中，而真正的fsync操作对于innodb来说并不知道什么时候执行，所以这种情况下发生mysql crash不会导致丢失数据，但是如果os crash 或者主机断电那么就会丢失没有保存的数据，使用这种方案可以大大提高效率，但是注意通过蓄电池后备的主机方式来保证主机不会断电，并且通过异地容灾来保证主机是正常的
+
+对于1这种方式来说，会导致写入操作的性能大幅下降，但是1这种配置还是系统的默认位置
+
+需要注意的是对于innodb_flush_log_at_trx_commit这个参数，针对是redolog的内容，当在mysql中对innodb表进行更改的时候，这些更改首先存储在innodb日志缓冲区的内存中，也就是log buffer中，然后在写到磁盘中的redolog文件中，当然中途还需要先放到操作系统缓存中，然后再fsync刷盘。
+
+##### 再次注意上面的参数说的log buffer全称应该是redo log buffer
+
+而sync_binlog这个参数针对的是binlog日志内容的刷盘策略
+
+sync_binlog = 0为默认配置，表示mysql不控制binlog的刷新，当事务提交以后，mysql不管什么时候进行fsync，完全交给操作系统，这时候性能最好，风险最大，单纯的mysql crash 无所谓，如果主机crash，那么会损失很多的binlog日志内容。
+
+sync_binlog = N，如果设置为1，那么每次事务提交都会强制刷盘，最安全性能最低，即使主机 crash ，也最多损失一个事务的binlog数据
+
+一般会设置N = 500或者1000，表示没进行N次事务提交，才进行一次fsync。
+
+另外如果设置为1，那么即使系统crash，丢失的也是一个没有完成的事务，对实际数据并没有造成任何影响
