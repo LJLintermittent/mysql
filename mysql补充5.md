@@ -43,3 +43,19 @@ innodb在插入之前不得不先找到并且从磁盘中读取目标页到内�
 select * from user uc ,(select id from user orderby create_time limit 10000,10) as temp where temp.id  = uc.id;(延迟关联的思想)
 
 select id from user orderby create_time limit 10000,10这一句快的核心原因就在于我查的主键id，这里面会使用create_time的普通索引，那么普通索引的叶子节点不就是主键id，所以这条sql语句一定不需要回表，extra列一定会显示using index，核心的limit操作优化成了不需要回表以后，分页的效果也出来了，因为拿到了分页效果的主键id。那么对于外层查询，主键id直接走主键索引树，也很快就能查到完整的行记录
+
+#### union查询优化
+
+mysql总是通过创建临时表的方式来执行union查询，除非是必须需要服务器来消除重复的行（单独使用union查询服务器会在临时表中加一个distinct来去重），否则都使用union all（union all 不会去除重复的行），在临时表中进行去重会对整个临时表的数据做一个唯一性检查，这个代价通常很大。
+
+**innodb_flush_log_at_trx_commit = 0**
+
+innodb中的io thread每隔一秒将log buffer中的数据写入到操作系统缓存，然后通知操作系统进行fsync，保证数据被写入到物理文件中真正持久化，由于每隔一秒触发一次这样的操作，所以并不是每次事务提交都会触发，那么在极端情况下，mysql crash或者os crash 或者主机断电都会导致丢失一秒的数据
+
+**innodb_flush_log_at_trx_commit = 1**
+
+innodb中的 io thread在每次事务提交的时候都会将log buffer中的数据写入到操作系统的文件系统的缓存中，并且立即调用fsync，将数据做持久化处理，这个是最安全的情况，最极端情况是会丢失这一次事务的数据，那么也就是说已经提交过的事务都不会丢失
+
+**innodb_flush_log_at_trx_commit = 2**
+
+这个是每次事务提交的时候都会将数据写入到操作系统的文件系统的缓存中，但是这个还是相当于在内存中，而真正的fsync操作对于innodb来说并不知道什么时候执行，所以这种情况下发生mysql crash不会导致丢失数据，但是如果os crash 或者主机断电那么就会丢失没有保存的数据，使用这种方案可以大大提高效率，但是注意通过蓄电池后备的主机方式来保证主机不会断电，并且通过异地容灾来保证主机是正常的
